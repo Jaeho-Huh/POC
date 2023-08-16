@@ -113,7 +113,7 @@ public class OFS_O_Batch {
                 	if(ztinv012SaveList.size()>0) {
             	    	//ztinv012Ver2Repository.deleteAll(); // truncate
                 		ztinv012Ver2Repository.truncateZtinv012Ver2c();
-            	        ztinv012Ver2Repository.saveAllAndFlush(ztinv012SaveList);
+            	        ztinv012Ver2Repository.saveAll(ztinv012SaveList);
                 	}
                 	
                     System.out.println(":::::::::::::::::::::::::::::: Batch Finished :::::::::::::::::::::::::::::::::::::::::::::");
