@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Batch Job Executions</title>
+</head>
+<body>
+    <h1>Batch Job Executions</h1>
+    <table border="1">
+        <tr>
+            <th>Job Name</th>
+            <th>Start Time</th>
+            <th>End Time</th>
+            <th>Status</th>
+        </tr>
+        <tr th:each="jobExecution : ${jobExecutions}">
+            <td th:text="${jobExecution.name}">Job Name</td>
+            <td th:text="${jobExecution.startTime}">Start Time</td>
+            <td th:text="${jobExecution.endTime}">End Time</td>
+            <td th:text="${jobExecution.status}">Status</td>
+        </tr>
+    </table>
+</body>
+</html>

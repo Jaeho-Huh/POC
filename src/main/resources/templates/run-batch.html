@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Run Batch</title>
+</head>
+<body>
+    <h1>Run Batch</h1>
+    <form th:action="@{/run-batch}" method="get">
+        <button type="submit">Run Batch</button>
+    </form>
+    <p th:text="${message}"></p>
+</body>
+</html>

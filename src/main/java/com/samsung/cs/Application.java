@@ -1,23 +1,29 @@
-package com.heroku.java;
+package com.samsung.cs;
 
+import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import javax.sql.DataSource;
+
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.stereotype.Controller;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.util.ArrayList;
-import java.util.Map;
 
 @SpringBootApplication
-@Controller
-public class GettingStartedApplication {
-    private final DataSource dataSource;
-
-    @Autowired
-    public GettingStartedApplication(DataSource dataSource) {
+@EnableJpaRepositories(basePackages = {"com.samsung.cs.repository"}) // com.my.jpa.repository 하위에 있는 jpaRepository를 상속한 repository scan
+@EntityScan(basePackages = {"com.samsung.cs.model.entity"}) // com.my.jpa.entity 하위에 있는 @Entity 클래스 scan
+public class Application {
+	 private final DataSource dataSource;
+	 
+	@Autowired
+    public Application(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
@@ -48,7 +54,17 @@ public class GettingStartedApplication {
         }
     }
 
-    public static void main(String[] args) {
-        SpringApplication.run(GettingStartedApplication.class, args);
-    }
+	public static void main(String[] args) {
+		
+	  List<String> params = new ArrayList<>();
+	  for(String key : args){
+			params.add(key); 
+	  } 
+	  params.add("requestDate="+System.currentTimeMillis());
+	  params.add("step=1");
+		
+	  SpringApplication.run(Application.class, params.toArray(new String[0]));
+	
+
+	}
 }

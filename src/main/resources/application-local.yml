@@ -1,0 +1,41 @@
+server:
+  port: ${PORT:8080}
+spring:
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    cache: false
+  web:
+    resources:
+      static-locations: META-INF:/resources,classpath:/resources,classpath:/static,classpath:/static/dist
+   
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: postgres 
+    password: 1234
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    database: postgresql
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+    generate-ddl: false
+
+  batch:
+    job:
+      enabled: false 
+
+logging:
+  level:
+    root: info
+    com.samsung.cs: debug
+    
+       
+
+ 
+ 
+
+
