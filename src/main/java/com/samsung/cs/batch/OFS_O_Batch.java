@@ -294,17 +294,17 @@ public class OFS_O_Batch {
 	            	z012.setUsageAvg(monthlyUsage);
 	            	z012.setMscQty(min);
 	            	
-	            	System.out.println(
-	            			"##### Z012Ver2 ######## "
-	            			+"companyCode : " + z012.getCompany() 
-	            			+" asc Code : " + z012.getAscAcctno()
-	            			+" parts Code : " + z012.getPrimeMat()
-	            			+" M01 : " + z012.getMon01C()
-	            			+" M02 : " + z012.getMon02C()
-	            			+" M03 : " + z012.getMon03()
-	            			+" Usage Avg : " + z012.getUsageAvg()
-	            			+ " get Safety Stock : " + z012.getMscQty()
-	            			);
+//	            	System.out.println(
+//	            			"##### Z012Ver2 ######## "
+//	            			+"companyCode : " + z012.getCompany() 
+//	            			+" asc Code : " + z012.getAscAcctno()
+//	            			+" parts Code : " + z012.getPrimeMat()
+//	            			+" M01 : " + z012.getMon01C()
+//	            			+" M02 : " + z012.getMon02C()
+//	            			+" M03 : " + z012.getMon03()
+//	            			+" Usage Avg : " + z012.getUsageAvg()
+//	            			+ " get Safety Stock : " + z012.getMscQty()
+//	            			);
 	            }
             
             
