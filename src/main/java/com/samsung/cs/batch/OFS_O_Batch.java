@@ -28,6 +28,7 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.data.RepositoryItemReader;
 import org.springframework.batch.item.data.builder.RepositoryItemReaderBuilder;
@@ -47,6 +48,8 @@ import com.samsung.cs.model.entity.key.Ztinv001Id;
 import com.samsung.cs.repository.Ztinv001Repository;
 import com.samsung.cs.repository.Ztinv009Repository;
 import com.samsung.cs.repository.Ztinv012Ver2Repository;
+import com.samsung.cs.vo.Ztinv009Vo;
+
 import org.springframework.batch.core.JobExecutionListener;
 import jakarta.persistence.EntityManagerFactory;
 
@@ -66,7 +69,7 @@ public class OFS_O_Batch {
 	@Autowired
 	private Ztinv012Ver2Repository ztinv012Ver2Repository; 
 	
-	@Value("#{T(java.time.LocalDate).now().minusMonths(2)}")
+	@Value("#{T(java.time.LocalDate).now().minusMonths(1)}")
 	private LocalDate currentDate;
 	
 	private double MonthlyWeight[] = {0.5, 0.3, 0.2}; 
@@ -75,7 +78,6 @@ public class OFS_O_Batch {
 	
 	private Map<String,Ztinv012Ver2> Ztinv012Ver2Map = new HashMap<>(); 
 	private List<Ztinv012Ver2> ztinv012List = new ArrayList<>();
-	private List<Ztinv001Id> ztinv001KeyList = new ArrayList<>();
 	private List<String> ztinv001Company = new ArrayList<>(); 
 	private List<String> ztinv001AscCode = new ArrayList<>();
 	private List<String> ztinv001AscAcctNo = new ArrayList<>();
@@ -95,7 +97,7 @@ public class OFS_O_Batch {
                 .start(getUsedQuantityStep(jobRepository,transactionManager))
                 .next(getUsedQuantityStep(jobRepository,transactionManager))
                 .next(getUsedQuantityStep(jobRepository,transactionManager))
-                .next(setStockQtyStep(jobRepository,transactionManager))
+                //.next(setStockQtyStep(jobRepository,transactionManager))
                 .next(FinishedStep(jobRepository,transactionManager))
                 .build();
     }
@@ -104,11 +106,23 @@ public class OFS_O_Batch {
     public Step FinishedStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
         return new StepBuilder("step", jobRepository)
                 .tasklet((StepContribution contribution, ChunkContext chunkContext) -> {
+                	
+                	
+                	List<Ztinv012Ver2> ztinv012SaveList = new ArrayList<>();
+                	for(String key : Ztinv012Ver2Map.keySet()) {
+                    	Ztinv012Ver2 z012 = Ztinv012Ver2Map.get(key); 
+                    	ztinv012SaveList.add(z012); 
+                    }
+                	if(ztinv012SaveList.size()>0) {
+            	    	//ztinv012Ver2Repository.deleteAll(); // truncate
+                		ztinv012Ver2Repository.truncateZtinv012Ver2c();
+            	        ztinv012Ver2Repository.saveAllAndFlush(ztinv012SaveList);
+                	}
+                	
                     System.out.println(":::::::::::::::::::::::::::::: Batch Finished :::::::::::::::::::::::::::::::::::::::::::::");
                     step = 1; 
                     Ztinv012Ver2Map = new HashMap<>(); 
                 	ztinv012List = new ArrayList<>();
-                	ztinv001KeyList = new ArrayList<>();
                 	ztinv001Company = new ArrayList<>(); 
                 	ztinv001AscCode = new ArrayList<>();
                 	ztinv001AscAcctNo = new ArrayList<>();
@@ -122,28 +136,18 @@ public class OFS_O_Batch {
     public Step getUsedQuantityStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
     	
         return new StepBuilder("Step getUsedQuantityStep_"+step,jobRepository)
-                .<Ztinv009,Ztinv009>chunk(5000,transactionManager)
+                .<Ztinv009Vo,Ztinv009Vo>chunk(5000,transactionManager)
                 .reader(ztinv009Reader())
                 .writer(getUsedQuantityStepWriter())
                 .build();
     }
    
-    @Bean
-    @JobScope
-    public Step setStockQtyStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
-    	
-        return new StepBuilder("setStockQtyStep "+step,jobRepository)
-                .<Ztinv001,Ztinv001>chunk(5000,transactionManager)
-                .reader(ztinv001Reader())
-                .writer(setStockQtyStepWriter())
-                .build();
-    }
-    
-    
+
+
     
     @Bean
     @StepScope
-    public RepositoryItemReader<Ztinv009> ztinv009Reader() {
+    public RepositoryItemReader<Ztinv009Vo> ztinv009Reader() {
     	
     	
     	int period = 30; 
@@ -166,44 +170,31 @@ public class OFS_O_Batch {
     	System.out.println(ztinv012List.size());
     	step+=1; 
     	
-        return new RepositoryItemReaderBuilder<Ztinv009>()
+        return new RepositoryItemReaderBuilder<Ztinv009Vo>()
                 .repository(ztinv009Repository)
                 .methodName("getLtBuf")  // 사용할 리포지토리 메서드명 지정
                 .arguments(new Object[] {lv_dat,lv_dat2})
                 .sorts(Collections.singletonMap("company", Sort.Direction.ASC))  // 정렬 조건 설정
-                .pageSize(5000)  // 한 번에 읽어올 페이지 크기
+                .pageSize(10000)  // 한 번에 읽어올 페이지 크기
                 .name("ztinv009Reader")
                 .build();
     }
     
     
     
-    @Bean
-    @StepScope
-    public RepositoryItemReader<Ztinv001> ztinv001Reader() {
-        return new RepositoryItemReaderBuilder<Ztinv001>()
-                .repository(ztinv001Repository)
-                .methodName("getAllByIds")  // 사용할 리포지토리 메서드명 지정
-                .arguments(new Object[] {ztinv001Company,ztinv001AscAcctNo,ztinv001AscCode,ztinv001PartsCode})
-                .sorts(Collections.singletonMap("parts_code", Sort.Direction.ASC))  // 정렬 조건 설정
-                .pageSize(5000)  // 한 번에 읽어올 페이지 크기
-                .name("ztinv001Reader")
-                .build();
-    }
-    
     
     @Bean
-    public ItemWriter<Ztinv009> getUsedQuantityStepWriter() {
-    	Map<String,Ztinv009> ltBuf1 = new HashMap<>(); 
-    	Map<String,Ztinv009> ltBuf2 = new HashMap<>();
+    public ItemWriter<Ztinv009Vo> getUsedQuantityStepWriter() {
+    	Map<String,Ztinv009Vo> ltBuf1 = new HashMap<>(); 
+    	Map<String,Ztinv009Vo> ltBuf2 = new HashMap<>();
     	
     	
         return items -> {
-            for (Ztinv009 item : items) {
+            for (Ztinv009Vo item : items) {
             	if(item.getMovty() == 3 || item.getMovty() ==5) {
-            		ltBuf1.put(item.getCompany()+"_"+item.getAsc_acctno()+"_"+item.getAsc_Code()+"_"+item.getParts_Code(), item);
+            		ltBuf1.put(item.getCompany()+"_"+item.getAsc_acctno()+"_"+item.getAsc_code()+"_"+item.getParts_code(), item);
             	}else {
-            		ltBuf2.put(item.getCompany()+"_"+item.getAsc_acctno()+"_"+item.getAsc_Code()+"_"+item.getParts_Code(), item);
+            		ltBuf2.put(item.getCompany()+"_"+item.getAsc_acctno()+"_"+item.getAsc_code()+"_"+item.getParts_code(), item);
             	}
             }
             String lv_period = "MON01"; 
@@ -225,39 +216,42 @@ public class OFS_O_Batch {
             for(String strKey : ltBuf1.keySet()) {
             	double ltBuf1Qty = ltBuf1.get(strKey).getQty();
             	String company = ltBuf1.get(strKey).getCompany();
-            	String prime_mat = ltBuf1.get(strKey).getParts_Code();
-            	String ascCode = ltBuf1.get(strKey).getAsc_Code(); 
+            	String prime_mat = ltBuf1.get(strKey).getParts_code();
+            	String ascCode = ltBuf1.get(strKey).getAsc_code(); 
             	String ascAcctno = ltBuf1.get(strKey).getAsc_acctno();
+            	Double stockQty = ltBuf1.get(strKey).getStock_qty(); 
             	
             	if(ltBuf2.containsKey(strKey)) {
             		ltBuf1Qty = ltBuf1Qty - ltBuf2.get(strKey).getQty();  
             	}
-            	Ztinv012Ver2 ztin012Ver2 = new Ztinv012Ver2();
-            	Ztinv001Id ztinv001Id = new Ztinv001Id(); 
             	
-            	ztinv001Id.setAsc_acctno(ascAcctno);
-            	ztinv001Id.setAsc_code(ascCode);
-            	ztinv001Id.setCompany(company);
-            	ztinv001Id.setParts_code(prime_mat);
-            	ztinv001Company.add(company); 
-            	ztinv001AscAcctNo.add(ascAcctno);
-            	ztinv001AscCode.add(ascCode);
-            	ztinv001PartsCode.add(prime_mat);
+					//////////////////////////////////////////////////////////////////////////////
+					Ztinv012Ver2 ztin012Ver2 = new Ztinv012Ver2();
+					ztin012Ver2.setAscAcctno(ascAcctno);
+					ztin012Ver2.setCompany(company);
+					ztin012Ver2.setPrimeMat(prime_mat);
+					ztin012Ver2.setAscCode(ascCode);
+					ztin012Ver2.setStockQtyC(stockQty);
+					
+					if(step==2)      ztin012Ver2.setMon01C(ltBuf1Qty);
+					else if(step==3) ztin012Ver2.setMon02C(ltBuf1Qty);
+					else if(step==4) {
+					ztin012Ver2.setMon03(ltBuf1Qty);
+					}
+					
+					
+					
+					if(Ztinv012Ver2Map.containsKey(company+"_"+ascAcctno+"_"+ascCode+"_"+prime_mat)) {
+					
+					Ztinv012Ver2 z012 = Ztinv012Ver2Map.get(company+"_"+ascAcctno+"_"+ascCode+"_"+prime_mat); 
+					if(step==2) z012.setMon01C(ltBuf1Qty);
+					else if(step==3) z012.setMon02C(ltBuf1Qty);
+					else if(step==4) z012.setMon03(ltBuf1Qty);
+					Ztinv012Ver2Map.put(company+"_"+ascAcctno+"_"+ascCode+"_"+prime_mat, z012); 
+					
+					}else Ztinv012Ver2Map.put(company+"_"+ascAcctno+"_"+ascCode+"_"+prime_mat, ztin012Ver2); 
             	
             	
-            	ztin012Ver2.setAscAcctno(ascAcctno);
-            	ztin012Ver2.setCompany(company);
-            	ztin012Ver2.setPrimeMat(prime_mat);
-            	ztin012Ver2.setAscCode(ascCode);
-            	
-            	if(step==2)      ztin012Ver2.setMon01C(ltBuf1Qty);
-            	else if(step==3) ztin012Ver2.setMon02C(ltBuf1Qty);
-            	else if(step==4) {
-            		ztin012Ver2.setMon03(ltBuf1Qty);
-            	}
-            	ztinv012List.add(ztin012Ver2);
-            	Ztinv012Ver2Map.put(company+"_"+ascAcctno+"_"+ascCode+"_"+prime_mat, ztin012Ver2); 
-            	ztinv001KeyList.add(ztinv001Id);
             }
             
 	            //3개월치 MON01,MON02,MON03 채운후 --> Monthly Usage 계산, ROP(Safty Qty) --> MSC_QTY에 저장 , MIL(Max Stock) 
@@ -269,6 +263,7 @@ public class OFS_O_Batch {
 	            	
 	            	double max = Math.round(monthlyUsage * 14/ 30); //MIL  
 	            	double min = max*0.5; //ROP
+	            	
 	            	
 	            	z012.setUsageAvg(monthlyUsage);
 	            	z012.setMscQty(min);
@@ -283,6 +278,18 @@ public class OFS_O_Batch {
 	            	
 	            	double max = Math.round(monthlyUsage * 14/ 30); //MIL  
 	            	double min = max*0.5; //ROP
+	            	double currentStock = z012.getStockQtyC(); 
+	            	double proposalQty = 0; 
+	            	
+	            	// Minumum 주문 수량 
+            		double MDQ = 2.0; 
+            		
+            		if(min<=currentStock) proposalQty = 0; 
+            		else {
+            			proposalQty = max - currentStock;
+            			if(proposalQty < MDQ ) proposalQty = 0; 
+            		}
+            		z012.setProposalQtyC(proposalQty);
 	            	
 	            	z012.setUsageAvg(monthlyUsage);
 	            	z012.setMscQty(min);
@@ -304,50 +311,8 @@ public class OFS_O_Batch {
         };
     }
     
-    @Bean
-    public ItemWriter<Ztinv001> setStockQtyStepWriter() {
-    	step = 1; 
-        return items -> {
-        	for(Ztinv012Ver2 z012 : ztinv012List) {
-        		System.out.println(z012.getCompany()+","+z012.getAscAcctno()+","+z012.getAscCode()+","+z012.getPrimeMat()+","+z012.getUsageAvg());
-        	}
-            for (Ztinv001 ztinv001 : items) {
-            	Ztinv001Id ztinv001Id = ztinv001.getZtinv001Id(); 
-            	String key = ztinv001Id.getCompany() + "_" + ztinv001Id.getAsc_acctno() +"_" + ztinv001Id.getAsc_code()+"_" + ztinv001Id.getParts_code(); 
-            	if(Ztinv012Ver2Map.containsKey(key)) {
-            		Ztinv012Ver2 z012 = Ztinv012Ver2Map.get(key);  
-            		z012.setStockQtyC(Double.valueOf(ztinv001.getStock_qty()));
-            		double min = z012.getMscQty(); 
-            		double max = z012.getUsageAvg()*14/30;
-            		double currentStock = z012.getStockQtyC(); 
-            		double proposalQty = 0;
-            		
-            		// Minumum 주문 수량 
-            		double MDQ = 2.0; 
-            		
-            		if(min<=currentStock) proposalQty = 0; 
-            		else {
-            			proposalQty = max - currentStock;
-            			if(proposalQty < MDQ ) proposalQty = 0; 
-            		}
-            		z012.setProposalQtyC(proposalQty);
-            	}
-            }
-            List<Ztinv012Ver2> ztinv012SaveList = new ArrayList<>(); 
-            for(String key : Ztinv012Ver2Map.keySet()) {
-            	Ztinv012Ver2 z012 = Ztinv012Ver2Map.get(key); 
-            	ztinv012SaveList.add(z012); 
-            }
-            ztinv012Ver2Repository.deleteAll(); // truncate
-            if(ztinv012SaveList.size()>0) ztinv012Ver2Repository.saveAllAndFlush(ztinv012SaveList); 
-            
-            
-        };
     
     
-    
-    
-    }
     
     public static Double doubleNVL(Double value,Double defaultValue) {
     	

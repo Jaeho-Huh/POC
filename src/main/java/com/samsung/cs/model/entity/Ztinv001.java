@@ -1,6 +1,8 @@
 package com.samsung.cs.model.entity;
 
 
+import java.util.List;
+
 import com.samsung.cs.model.entity.key.Ztinv001Id;
 
 import jakarta.persistence.Column;
@@ -8,6 +10,9 @@ import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
+import jakarta.persistence.OneToMany;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -40,6 +45,9 @@ public class Ztinv001 {
 
     @Column(name="stock_qty")
     private Integer stock_qty;
+    
+
+     
     
     
 
