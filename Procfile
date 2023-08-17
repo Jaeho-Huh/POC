@@ -1,1 +1,1 @@
-web: java -Xmx900m -Dserver.port=$PORT $JAVA_OPTS -jar build/libs/demo-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+web: java -Xmx4096m -Dserver.port=$PORT $JAVA_OPTS -jar build/libs/demo-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
