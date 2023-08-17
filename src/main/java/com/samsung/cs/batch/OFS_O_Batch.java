@@ -139,11 +139,12 @@ public class OFS_O_Batch {
 									ps.setDouble(10, doubleNVL(z012.getProposalQtyC(),0.0));
 									ps.setDouble(11, doubleNVL(z012.getMscQty(),0.0));
 									
+									
 								}
 								
 								@Override
 								public int getBatchSize() {
-									return ztinv012SaveList.size();
+									return batchList.size();
 								}
 							});
                 		}
