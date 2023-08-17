@@ -151,7 +151,8 @@ public class OFS_O_Batch {
                 	}
                 	
                     System.out.println(":::::::::::::::::::::::::::::: Batch Finished :::::::::::::::::::::::::::::::::::::::::::::");
-                    step = 1; 
+                    step = 1;
+                    Ztinv012Ver2Map.clear(); /// Heap Memory를 위한 초기화
                     Ztinv012Ver2Map = new HashMap<>(); 
                     
                     return RepeatStatus.FINISHED;
