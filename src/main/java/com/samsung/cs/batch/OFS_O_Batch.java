@@ -121,11 +121,12 @@ public class OFS_O_Batch {
             	        //ztinv012Ver2Repository.saveAll(ztinv012SaveList);
                 		
                 		for(int i=0; i< ztinv012SaveList.size(); i+=insertBatchSize) {
-                			
+                			 List<Ztinv012Ver2> batchList = ztinv012SaveList.subList(i, Math.min(i + insertBatchSize, ztinv012SaveList.size()));
+                			 
 	                		jdbctemplate.batchUpdate(insertQuery, new BatchPreparedStatementSetter() {
 								@Override
 								public void setValues(PreparedStatement ps, int j) throws SQLException {
-									Ztinv012Ver2 z012 = ztinv012SaveList.get(j);
+									Ztinv012Ver2 z012 = batchList.get(j);
 									ps.setString(1, z012.getCompany());
 									ps.setString(2, z012.getAscAcctno());
 									ps.setString(3, z012.getAscCode());
