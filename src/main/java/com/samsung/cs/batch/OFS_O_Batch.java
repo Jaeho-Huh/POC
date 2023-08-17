@@ -78,7 +78,8 @@ public class OFS_O_Batch {
 	
 	
 	
-	private int step=1; 
+	private int step=1;
+	private int insertBatchSize = 1000; 
 	
 	
 
@@ -118,28 +119,33 @@ public class OFS_O_Batch {
             	    	//ztinv012Ver2Repository.deleteAll(); // truncate
                 		ztinv012Ver2Repository.truncateZtinv012Ver2c();
             	        //ztinv012Ver2Repository.saveAll(ztinv012SaveList);
-                		jdbctemplate.batchUpdate(insertQuery, new BatchPreparedStatementSetter() {
-							@Override
-							public void setValues(PreparedStatement ps, int i) throws SQLException {
-								Ztinv012Ver2 z012 = ztinv012SaveList.get(i);
-								ps.setString(1, z012.getCompany());
-								ps.setString(2, z012.getAscAcctno());
-								ps.setString(3, z012.getAscCode());
-								ps.setString(4, z012.getPrimeMat());
-								ps.setDouble(5, doubleNVL(z012.getMon01C(),0.0));
-								ps.setDouble(6, doubleNVL(z012.getMon02C(),0.0));
-								ps.setDouble(7, doubleNVL(z012.getMon03(),0.0));
-								ps.setDouble(8, doubleNVL(z012.getUsageAvg(),0.0));
-								ps.setDouble(9, doubleNVL(z012.getStockQtyC(),0.0));
-								ps.setDouble(10, doubleNVL(z012.getProposalQtyC(),0.0));
-								ps.setDouble(11, doubleNVL(z012.getMscQty(),0.0));
-							}
-							
-							@Override
-							public int getBatchSize() {
-								return ztinv012SaveList.size();
-							}
-						});
+                		
+                		for(int i=0; i< ztinv012SaveList.size(); i+=insertBatchSize) {
+                			
+	                		jdbctemplate.batchUpdate(insertQuery, new BatchPreparedStatementSetter() {
+								@Override
+								public void setValues(PreparedStatement ps, int j) throws SQLException {
+									Ztinv012Ver2 z012 = ztinv012SaveList.get(j);
+									ps.setString(1, z012.getCompany());
+									ps.setString(2, z012.getAscAcctno());
+									ps.setString(3, z012.getAscCode());
+									ps.setString(4, z012.getPrimeMat());
+									ps.setDouble(5, doubleNVL(z012.getMon01C(),0.0));
+									ps.setDouble(6, doubleNVL(z012.getMon02C(),0.0));
+									ps.setDouble(7, doubleNVL(z012.getMon03(),0.0));
+									ps.setDouble(8, doubleNVL(z012.getUsageAvg(),0.0));
+									ps.setDouble(9, doubleNVL(z012.getStockQtyC(),0.0));
+									ps.setDouble(10, doubleNVL(z012.getProposalQtyC(),0.0));
+									ps.setDouble(11, doubleNVL(z012.getMscQty(),0.0));
+									
+								}
+								
+								@Override
+								public int getBatchSize() {
+									return ztinv012SaveList.size();
+								}
+							});
+                		}
                 	}
                 	
                     System.out.println(":::::::::::::::::::::::::::::: Batch Finished :::::::::::::::::::::::::::::::::::::::::::::");
