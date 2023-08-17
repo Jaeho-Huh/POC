@@ -2,6 +2,8 @@ package com.samsung.cs.batch;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -38,6 +40,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.Sort;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import com.samsung.cs.batch.reader.Ztinv001Reader;
@@ -60,24 +64,18 @@ import jakarta.persistence.EntityManagerFactory;
 public class OFS_O_Batch {
 	
 
-
 	@Autowired
-	private Ztinv001Repository ztinv001Repository; 
+	private JdbcTemplate jdbctemplate; 
 	
 	@Autowired
 	private Ztinv009Repository ztinv009Repository; 
 	@Autowired
 	private Ztinv012Ver2Repository ztinv012Ver2Repository; 
-	
-	@Value("#{T(java.time.LocalDate).now().minusMonths(1)}")
+	@Value("#{T(java.time.LocalDate).now().minusMonths(1)}") // 1달전 데이터 기준으로 배치실행 -- 임시 
 	private LocalDate currentDate;
-	
 	private double MonthlyWeight[] = {0.5, 0.3, 0.2}; 
-	private int MIL = 14;
-	private double ROP = 0.5; 
-	
 	private Map<String,Ztinv012Ver2> Ztinv012Ver2Map = new HashMap<>(); 
-	private List<Ztinv012Ver2> ztinv012List = new ArrayList<>();
+	
 	
 	
 	private int step=1; 
@@ -104,7 +102,13 @@ public class OFS_O_Batch {
         return new StepBuilder("step", jobRepository)
                 .tasklet((StepContribution contribution, ChunkContext chunkContext) -> {
                 	
-                	
+                	String insertQuery = "insert into salesforce.ztinv012_ver2__c"
+                			+ " ( "
+                			+ "	company__c , asc_acctno__c , asc_code__c ,prime_mat__c, mon01__c ,mon02__c ,mon03__c ,usage_avg__c , stock_qty__c , proposal_qty__c, msc_qty__c"
+                			+ " ) "
+                			+ "values ("
+                			+ "?,?,?,?,?,?,?,?,?,?,?"
+                			+ ")"; 
                 	List<Ztinv012Ver2> ztinv012SaveList = new ArrayList<>();
                 	for(String key : Ztinv012Ver2Map.keySet()) {
                     	Ztinv012Ver2 z012 = Ztinv012Ver2Map.get(key); 
@@ -113,13 +117,37 @@ public class OFS_O_Batch {
                 	if(ztinv012SaveList.size()>0) {
             	    	//ztinv012Ver2Repository.deleteAll(); // truncate
                 		ztinv012Ver2Repository.truncateZtinv012Ver2c();
-            	        ztinv012Ver2Repository.saveAll(ztinv012SaveList);
+            	        //ztinv012Ver2Repository.saveAll(ztinv012SaveList);
+                		jdbctemplate.batchUpdate(insertQuery, new BatchPreparedStatementSetter() {
+							@Override
+							public void setValues(PreparedStatement ps, int i) throws SQLException {
+								Ztinv012Ver2 z012 = ztinv012SaveList.get(i);
+								ps.setString(1, z012.getCompany());
+								ps.setString(2, z012.getAscAcctno());
+								ps.setString(3, z012.getAscCode());
+								ps.setString(4, z012.getPrimeMat());
+								ps.setDouble(5, doubleNVL(z012.getMon01C(),0.0));
+								ps.setDouble(6, doubleNVL(z012.getMon02C(),0.0));
+								ps.setDouble(7, doubleNVL(z012.getMon03(),0.0));
+								ps.setDouble(8, doubleNVL(z012.getUsageAvg(),0.0));
+								ps.setDouble(9, doubleNVL(z012.getStockQtyC(),0.0));
+								ps.setDouble(10, doubleNVL(z012.getProposalQtyC(),0.0));
+								ps.setDouble(11, doubleNVL(z012.getMscQty(),0.0));
+							}
+							
+							@Override
+							public int getBatchSize() {
+								return ztinv012SaveList.size();
+							}
+						});
                 	}
                 	
                     System.out.println(":::::::::::::::::::::::::::::: Batch Finished :::::::::::::::::::::::::::::::::::::::::::::");
                     step = 1; 
                     Ztinv012Ver2Map = new HashMap<>(); 
+                    
                     return RepeatStatus.FINISHED;
+                    
                 }, transactionManager).build();
     }
 
