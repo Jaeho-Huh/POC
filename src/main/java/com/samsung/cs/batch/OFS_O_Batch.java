@@ -47,10 +47,12 @@ import org.springframework.transaction.PlatformTransactionManager;
 import com.samsung.cs.batch.reader.Ztinv001Reader;
 import com.samsung.cs.model.entity.Ztinv001;
 import com.samsung.cs.model.entity.Ztinv009;
+import com.samsung.cs.model.entity.Ztinv012;
 import com.samsung.cs.model.entity.Ztinv012Ver2;
 import com.samsung.cs.model.entity.key.Ztinv001Id;
 import com.samsung.cs.repository.Ztinv001Repository;
 import com.samsung.cs.repository.Ztinv009Repository;
+import com.samsung.cs.repository.Ztinv012Repository;
 import com.samsung.cs.repository.Ztinv012Ver2Repository;
 import com.samsung.cs.vo.Ztinv009Vo;
 
@@ -70,11 +72,14 @@ public class OFS_O_Batch {
 	@Autowired
 	private Ztinv009Repository ztinv009Repository; 
 	@Autowired
-	private Ztinv012Ver2Repository ztinv012Ver2Repository; 
+	private Ztinv012Ver2Repository ztinv012Ver2Repository;
+	@Autowired
+	private Ztinv012Repository ztinv012Repository; 
 	@Value("#{T(java.time.LocalDate).now().minusMonths(1)}") // 1달전 데이터 기준으로 배치실행 -- 임시 
 	private LocalDate currentDate;
 	private double MonthlyWeight[] = {0.5, 0.3, 0.2}; 
-	private Map<String,Ztinv012Ver2> Ztinv012Ver2Map = new HashMap<>(); 
+	
+	private Map<String,Ztinv012> Ztinv012Map = new HashMap<>(); // ztinv012Ver2 -- > ztinv012  
 	
 	
 	
@@ -103,30 +108,30 @@ public class OFS_O_Batch {
         return new StepBuilder("step", jobRepository)
                 .tasklet((StepContribution contribution, ChunkContext chunkContext) -> {
                 	
-                	String insertQuery = "insert into salesforce.ztinv012_ver2__c"
+                	String insertQuery = "insert into salesforce.ztinv012"
                 			+ " ( "
                 			+ "	company__c , asc_acctno__c , asc_code__c ,prime_mat__c, mon01__c ,mon02__c ,mon03__c ,usage_avg__c , stock_qty__c , proposal_qty__c, msc_qty__c"
                 			+ " ) "
                 			+ "values ("
                 			+ "?,?,?,?,?,?,?,?,?,?,?"
                 			+ ")"; 
-                	List<Ztinv012Ver2> ztinv012SaveList = new ArrayList<>();
-                	for(String key : Ztinv012Ver2Map.keySet()) {
-                    	Ztinv012Ver2 z012 = Ztinv012Ver2Map.get(key); 
+                	List<Ztinv012> ztinv012SaveList = new ArrayList<>();
+                	for(String key : Ztinv012Map.keySet()) {
+                    	Ztinv012 z012 = Ztinv012Map.get(key); 
                     	ztinv012SaveList.add(z012); 
                     }
                 	if(ztinv012SaveList.size()>0) {
             	    	//ztinv012Ver2Repository.deleteAll(); // truncate
-                		ztinv012Ver2Repository.truncateZtinv012Ver2c();
+                		ztinv012Repository.truncateZtinv012();
             	        //ztinv012Ver2Repository.saveAll(ztinv012SaveList);
                 		
                 		for(int i=0; i< ztinv012SaveList.size(); i+=insertBatchSize) {
-                			 List<Ztinv012Ver2> batchList = ztinv012SaveList.subList(i, Math.min(i + insertBatchSize, ztinv012SaveList.size()));
+                			 List<Ztinv012> batchList = ztinv012SaveList.subList(i, Math.min(i + insertBatchSize, ztinv012SaveList.size()));
                 			 
 	                		jdbctemplate.batchUpdate(insertQuery, new BatchPreparedStatementSetter() {
 								@Override
 								public void setValues(PreparedStatement ps, int j) throws SQLException {
-									Ztinv012Ver2 z012 = batchList.get(j);
+									Ztinv012 z012 = batchList.get(j);
 									ps.setString(1, z012.getCompany());
 									ps.setString(2, z012.getAscAcctno());
 									ps.setString(3, z012.getAscCode());
@@ -152,8 +157,8 @@ public class OFS_O_Batch {
                 	
                     System.out.println(":::::::::::::::::::::::::::::: Batch Finished :::::::::::::::::::::::::::::::::::::::::::::");
                     step = 1;
-                    Ztinv012Ver2Map.clear(); /// Heap Memory를 위한 초기화
-                    Ztinv012Ver2Map = new HashMap<>(); 
+                    Ztinv012Map.clear(); /// Heap Memory를 위한 초기화
+                    Ztinv012Map = new HashMap<>(); 
                     
                     return RepeatStatus.FINISHED;
                     
@@ -252,37 +257,37 @@ public class OFS_O_Batch {
             	}
             	
 					//////////////////////////////////////////////////////////////////////////////
-					Ztinv012Ver2 ztin012Ver2 = new Ztinv012Ver2();
-					ztin012Ver2.setAscAcctno(ascAcctno);
-					ztin012Ver2.setCompany(company);
-					ztin012Ver2.setPrimeMat(prime_mat);
-					ztin012Ver2.setAscCode(ascCode);
-					ztin012Ver2.setStockQtyC(stockQty);
+					Ztinv012 ztin012 = new Ztinv012();
+					ztin012.setAscAcctno(ascAcctno);
+					ztin012.setCompany(company);
+					ztin012.setPrimeMat(prime_mat);
+					ztin012.setAscCode(ascCode);
+					ztin012.setStockQtyC(stockQty);
 					
-					if(step==2)      ztin012Ver2.setMon01C(ltBuf1Qty);
-					else if(step==3) ztin012Ver2.setMon02C(ltBuf1Qty);
+					if(step==2)      ztin012.setMon01C(ltBuf1Qty);
+					else if(step==3) ztin012.setMon02C(ltBuf1Qty);
 					else if(step==4) {
-					ztin012Ver2.setMon03(ltBuf1Qty);
+					ztin012.setMon03(ltBuf1Qty);
 					}
 					
 					
 					
-					if(Ztinv012Ver2Map.containsKey(company+"_"+ascAcctno+"_"+ascCode+"_"+prime_mat)) {
+					if(Ztinv012Map.containsKey(company+"_"+ascAcctno+"_"+ascCode+"_"+prime_mat)) {
 					
-					Ztinv012Ver2 z012 = Ztinv012Ver2Map.get(company+"_"+ascAcctno+"_"+ascCode+"_"+prime_mat); 
+					Ztinv012 z012 = Ztinv012Map.get(company+"_"+ascAcctno+"_"+ascCode+"_"+prime_mat); 
 					if(step==2) z012.setMon01C(ltBuf1Qty);
 					else if(step==3) z012.setMon02C(ltBuf1Qty);
 					else if(step==4) z012.setMon03(ltBuf1Qty);
-					Ztinv012Ver2Map.put(company+"_"+ascAcctno+"_"+ascCode+"_"+prime_mat, z012); 
+					Ztinv012Map.put(company+"_"+ascAcctno+"_"+ascCode+"_"+prime_mat, z012); 
 					
-					}else Ztinv012Ver2Map.put(company+"_"+ascAcctno+"_"+ascCode+"_"+prime_mat, ztin012Ver2); 
+					}else Ztinv012Map.put(company+"_"+ascAcctno+"_"+ascCode+"_"+prime_mat, ztin012); 
             	
             	
             }
             
 	            //3개월치 MON01,MON02,MON03 채운후 --> Monthly Usage 계산, ROP(Safty Qty) --> MSC_QTY에 저장 , MIL(Max Stock) 
-	            for(String key : Ztinv012Ver2Map.keySet()) {
-	            	Ztinv012Ver2 z012 = Ztinv012Ver2Map.get(key); 
+	            for(String key : Ztinv012Map.keySet()) {
+	            	Ztinv012 z012 = Ztinv012Map.get(key); 
 	            	double m01 = doubleNVL(z012.getMon01C(),0.0);
 	            	double m02 = doubleNVL(z012.getMon02C(),0.0);
 	            	double m03 = doubleNVL(z012.getMon03(),0.0);
